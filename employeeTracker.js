@@ -1,9 +1,11 @@
+// Required dependencies
 const inquirer = require('inquirer');
 const mysql = require('mysql');
 require('console.table');
 const figlet = require('figlet');
 require('dotenv').config();
 
+// Connection to mysql
 const connection = mysql.createConnection({
     host: 'localhost',    
     port: 3306,  
@@ -19,6 +21,7 @@ const connection = mysql.createConnection({
     mainMenu();
   });
 
+// Main menu when application is run
 const mainMenu = () => {
     inquirer.prompt([
         {
@@ -32,10 +35,12 @@ const mainMenu = () => {
                 'Add Roles',
                 'Add Employees',
                 'Update Employee Role',
+                'Delete Employee',
                 'Exit'                
             ],
             name: 'action'
         }
+        // switch statement where based on choice from menu, function is run
     ]).then((answer) => {
         switch (answer.action){
             case 'View All Employees':
@@ -66,6 +71,10 @@ const mainMenu = () => {
                 updateRole();
                 break;
 
+            case 'Delete Employee':
+                deleteEmployee();
+                break;
+
             case 'Exit':
                 connection.end();
                 break;
@@ -77,6 +86,7 @@ const mainMenu = () => {
     });
 };
 
+// Displays all employees in company with name, title, department, salary and manager
 const allEmployeeSearch = () => {
     let query = "SELECT employeeManager.id, employeeManager.first_name, employeeManager.last_name, roleDept.title, roleDept.salary, roleDept.name AS department_name, employeeManager.manager_name ";
     query += "FROM (SELECT employee.id, employee.first_name, employee.last_name, employee.role_id, employee.manager_id, CONCAT(manager.first_name, ' ', manager.last_name) AS manager_name ";
@@ -107,6 +117,7 @@ const departmentSearch = () => {
 
 };
 
+// View all roles in company and which employees are in each role
 const roleSearch = () => {
     const query = "SELECT employee.first_name, employee.last_name, role.title AS role FROM employee INNER JOIN role ON employee.role_id = role.id ORDER BY role.title;"
 
@@ -119,6 +130,7 @@ const roleSearch = () => {
     })
 };
 
+// View all department in company and which employee is in each department
 const addDepartment = () => {
     inquirer.prompt([
         {
@@ -139,6 +151,7 @@ const addDepartment = () => {
 
 }
 
+// Add a new role to comany, with salary and department it is part of
 const addRoles = () => {
     connection.query('SELECT * FROM department', (err, results) => {
         if (err) throw err;
@@ -188,6 +201,7 @@ const addRoles = () => {
     
 }
 
+// Add new employee to company
 const addEmployee = () => {
     const query = 'SELECT CONCAT (first_name," ", last_name) AS full_name, title FROM employee RIGHT OUTER JOIN role ON employee.role_id = role.id; '    
     //const role_id;
@@ -254,15 +268,12 @@ const addEmployee = () => {
                         allEmployeeSearch();
                     })
                 }
-            )
-            
-            // query3 += 'VALUES (?, ?, (SELECT id FROM role WHERE title = ?), ';
-            // query3 += '(SELECT id FROM (SELECT id FROM employee WHERE CONCAT (first_name, " ", last_name) = ?) AS temp));'
-            
+            )            
         })
     })
 }
 
+// Update role of employee
 const updateRole = () => {    
     const query = 'SELECT CONCAT (first_name," ", last_name) AS full_name, role.id AS role_id, title FROM employee RIGHT OUTER JOIN role ON employee.role_id = role.id;'    
 
@@ -322,6 +333,32 @@ const updateRole = () => {
     })
 }
 
+// Delete employee info from company
+const deleteEmployee = () => {
+    let query = "SELECT employeeManager.id, employeeManager.first_name, employeeManager.last_name, roleDept.title, roleDept.salary, roleDept.name AS department_name, employeeManager.manager_name ";
+    query += "FROM (SELECT employee.id, employee.first_name, employee.last_name, employee.role_id, employee.manager_id, CONCAT(manager.first_name, ' ', manager.last_name) AS manager_name ";
+    query += "FROM employee LEFT JOIN employee AS manager ON manager.id = employee.manager_id) AS employeeManager LEFT JOIN (SELECT role.id, role.title, role.salary, department.name ";
+    query += "FROM role LEFT JOIN department ON role.department_id = department.id) AS roleDept ON employeeManager.role_id = roleDept.id;"
+
+    connection.query(query, (err, results) => {
+        if(err) {
+            throw err;
+        }
+        console.table(results);
+        inquirer.prompt([
+            {
+                type: 'input',
+                message: 'Enter the employee id you want to remove',
+                name: 'removeID'
+            }
+        ]).then((answer) => {
+            connection.query('DELETE FROM employee WHERE ?', {id: answer.removeID})
+            mainMenu();
+        }) 
+    });
+}
+
+// View all departments
 const viewDept = () => {
     const query = 'SELECT department.name FROM department;'
 
@@ -334,6 +371,7 @@ const viewDept = () => {
     })
 }
 
+// View all roles
 const viewRole = () => {
     const query = 'SELECT role.title, role.salary, role.department_id FROM role;'
 
