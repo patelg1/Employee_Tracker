@@ -189,10 +189,10 @@ const addRoles = () => {
 }
 
 const addEmployee = () => {
-    const query = 'SELECT title FROM role;'
-    const query2 = 'SELECT CONCAT (first_name," ", last_name) AS full_name FROM employee;'
+    const query = 'SELECT CONCAT (first_name," ", last_name) AS full_name, title FROM employee RIGHT OUTER JOIN role ON employee.role_id = role.id; '    
+    //const role_id;
 
-    connection.query(query, query2, (err, results) => {
+    connection.query(query, (err, results) => {
         if (err) {
             throw err;
         };
@@ -212,10 +212,14 @@ const addEmployee = () => {
                 message: 'What is the role?',
                 choices: function () {
                     let roleArray = [];
-                    results.forEach(results => {
+                    results.forEach(results => { 
+                        if (!roleArray.includes(results.title)) {                   
                         roleArray.push(results.title);
+                        }
                     })
+                    console.log(roleArray);
                     return roleArray;
+
                 },
                 name: 'addRole'
             },
@@ -225,31 +229,44 @@ const addEmployee = () => {
                 choices: function () {
                     let managerArray = [];
                     results.forEach(results => {
-                        managerArray.push(results.full_name);
+                        console.log('Employee full name: ' + results.full_name);
+                        if (results.full_name != null){
+                            managerArray.push(results.full_name);
+                        }
+                        
                     })
                     return managerArray;
                 },
                 name: 'addManager'
             }
         ]).then((answer) => {
-            const query3 = 'INSERT INTO employee (first_name, last_name, role_id, manager_id) ';
-            query3 += 'VALUES (?, ?, (SELECT id FROM role WHERE title = ?), ';
-            query3 += '(SELECT id FROM (SELECT id FROM employee WHERE CONCAT (first_name, " ", last_name) = ?) AS temp));'
-            connection.query(query3, [answer.firstName, answer.lastName, answer.addRole, answer.addManager], (err, results) => {
-                if (err) {
-                    throw err;
-                };
-                allEmployeeSearch();
-            })
+            connection.query('SELECT id FROM employee WHERE CONCAT (first_name, " ", last_name) = ?', 
+                [answer.addManager], (err, results) => {
+                    if (err) {
+                        throw err
+                    };
+                    console.log(results[0].id);
+                    const query3 = 'INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, (SELECT id FROM role WHERE title = ?), ?);'
+                    connection.query(query3, [answer.firstName, answer.lastName, answer.addRole, results[0].id], (err, results) => {
+                        if (err) {
+                            throw err;
+                        };
+                        allEmployeeSearch();
+                    })
+                }
+            )
+            
+            // query3 += 'VALUES (?, ?, (SELECT id FROM role WHERE title = ?), ';
+            // query3 += '(SELECT id FROM (SELECT id FROM employee WHERE CONCAT (first_name, " ", last_name) = ?) AS temp));'
+            
         })
     })
 }
 
 const updateRole = () => {    
-    const query = 'SELECT CONCAT (first_name," ", last_name) AS full_name FROM employee;'
-    const query2 = 'SELECT title FROM role;'
+    const query = 'SELECT CONCAT (first_name," ", last_name) AS full_name, role.id AS role_id, title FROM employee RIGHT OUTER JOIN role ON employee.role_id = role.id;'    
 
-    connection.query(query, query2, (err, results) => {
+    connection.query(query, (err, results) => {
         if (err){
             throw err;
         }
@@ -257,9 +274,15 @@ const updateRole = () => {
             {
                 type: 'list',
                 message: 'Which employee would you like to update role for?',
-                choices: function() {
-                    let employeeArray = results.map(choice => choice.full_name);
+                choices: function () {
+                    let employeeArray = [];
+                    results.forEach(results => { 
+                        if (results.full_name != null) {                   
+                        employeeArray.push(results.full_name);
+                        }
+                    })                    
                     return employeeArray;
+
                 },
                 name: 'employeeUpdate'
             },
@@ -267,18 +290,34 @@ const updateRole = () => {
                 type: 'list',
                 message: 'Select a new role',
                 choices: function () {
-                    let choiceArray = results.map(choice => choice.title);
-                    return choiceArray;
+                    let roleArray = [];
+                    results.forEach(results => { 
+                        if (!roleArray.includes(results.title)) {                   
+                        roleArray.push(results.title);
+                        }
+                    })                    
+                    return roleArray;
+
                 },
                 name: 'updatedRole'
             },
         ]).then((answer) => {
-            connection.query('UPDATE employee SET role_id = (SELECT id FROM role WHERE title = ?) WHERE id = (SELECT id FROM employee WHERE CONCAT(first_name," ", last_name) = ?) AS temp', [answer.updateRole, answer.employeeUpdate], (err, results) => {
-                if (err) {
-                    throw err;
-                };
-                mainMenu();
-            })
+            connection.query('SELECT id FROM employee WHERE CONCAT (first_name, " ", last_name) = ?', 
+                [answer.employeeUpdate], (err, results) => {
+                    if (err) {
+                        throw err
+                    };
+                    console.log(results[0].id);
+                    console.log(answer.updatedRole);
+                    const query3 = 'UPDATE employee SET role_id = (SELECT id FROM role WHERE title = ?) WHERE id = ?'
+                    connection.query(query3, [answer.updatedRole, results[0].id], (err, results) => {
+                        if (err) {
+                            throw err;
+                        };
+                        mainMenu();
+                    })
+                }
+            )
         })
     })
 }
