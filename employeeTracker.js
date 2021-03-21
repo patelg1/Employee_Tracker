@@ -189,7 +189,7 @@ const addRoles = () => {
 }
 
 const addEmployee = () => {
-    const query = 'SELECT * FROM role;'
+    const query = 'SELECT title FROM role;'
     const query2 = 'SELECT CONCAT (first_name," ", last_name) AS full_name FROM employee;'
 
     connection.query(query, query2, (err, results) => {
@@ -211,8 +211,11 @@ const addEmployee = () => {
                 type: 'list',
                 message: 'What is the role?',
                 choices: function () {
-                    let choiceArray = results[0].map(choice => choice.title);
-                    return choiceArray;
+                    let roleArray = [];
+                    results.forEach(results => {
+                        roleArray.push(results.title);
+                    })
+                    return roleArray;
                 },
                 name: 'addRole'
             },
@@ -220,8 +223,11 @@ const addEmployee = () => {
                 type: 'list',
                 message: 'Who is the manager?',
                 choices: function () {
-                    let choiceArray = results[1].map(choice => choice.full_name);
-                    return choiceArray;
+                    let managerArray = [];
+                    results.forEach(results => {
+                        managerArray.push(results.full_name);
+                    })
+                    return managerArray;
                 },
                 name: 'addManager'
             }
@@ -233,7 +239,7 @@ const addEmployee = () => {
                 if (err) {
                     throw err;
                 };
-                mainMenu();
+                allEmployeeSearch();
             })
         })
     })
@@ -252,8 +258,8 @@ const updateRole = () => {
                 type: 'list',
                 message: 'Which employee would you like to update role for?',
                 choices: function() {
-                    let choiceArray = results[0].map(choice => choice.full_name);
-                    return choiceArray;
+                    let employeeArray = results.map(choice => choice.full_name);
+                    return employeeArray;
                 },
                 name: 'employeeUpdate'
             },
@@ -261,7 +267,7 @@ const updateRole = () => {
                 type: 'list',
                 message: 'Select a new role',
                 choices: function () {
-                    let choiceArray = results[0].map(choice => choice.title);
+                    let choiceArray = results.map(choice => choice.title);
                     return choiceArray;
                 },
                 name: 'updatedRole'
